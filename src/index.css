@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* Satoshi, self hosted from public/fonts (same fonts as Ranco). */
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Size matched stand in while Satoshi loads, so text does not jump. */
+@font-face {
+  font-family: "Satoshi Fallback";
+  src: local("Arial");
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+  size-adjust: 100.5%;
+}
+
+/* Design tokens, following Ranco's template. Every colour on every screen comes from
+   here, so a clinic's brand colour (Standard and Pro) can restyle the whole app by
+   overriding the accent tokens. */
+@theme {
+  --font-satoshi: "Satoshi", "Satoshi Fallback", sans-serif;
+
+  /* Type scale: 14px body, 18px sub headings, 24px headings. */
+  --text-body: 14px;
+  --text-body--line-height: 1.6;
+  --text-subheading: 18px;
+  --text-subheading--line-height: 1.4;
+  --text-heading: 24px;
+  --text-heading--line-height: 1.2;
+
+  /* Deep Ocean palette */
+  --color-paper: #fbfcfe;
+  --color-paper-raised: #f3f6fa;
+  --color-ink: #101826;
+  --color-ink-soft: #57667a;
+  /* A little darker than Ranco's #8894a3 so small grey text meets the 4.5 to 1 contrast guideline. */
+  --color-ink-faint: #667385;
+  --color-rule: #e1e7ef;
+  --color-accent: #1e5f8c;
+  --color-accent-deep: #123f5c;
+  --color-accent-hover: #1a5478;
+  --color-accent-tint: #e6eef4;
+  --color-sidebar: #e7f8fd;
+  --color-crit: #a8433a;
+  --color-crit-soft: #f6e6e2;
+  --color-ok: #2f7d4f;
+  --color-ok-soft: #e2f0e6;
+  --color-warn: #96690f;
+  --color-warn-soft: #faf0d9;
+
+  /* Ranco's pastel set for stat tiles and the View button. */
+  --color-sky: #2f8fe0;
+  --color-sky-soft: #e1f1fc;
+  --color-mint: #1fae72;
+  --color-mint-soft: #e2f7ec;
+  --color-lavender: #6c5ce7;
+  --color-lavender-soft: #edebfb;
+  --color-teal: #0e8c88;
+  --color-teal-soft: #dff6f5;
+  --color-orange: #c4570f;
+  --color-orange-soft: #fdeee3;
+  --color-pink: #c93d7b;
+  --color-pink-soft: #fdeef4;
+
+  /* Ranco's light blue gradient and waves behind the patient card and form. */
+  --color-hero-from: #eaf5fe;
+  --color-hero-to: #c7e5fa;
+  --color-wave-light: #bee1f9;
+  --color-wave-deep: #8dcbf2;
+}
+
+/* Patient sections open as a bottom sheet that slides up over the patient page. */
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-family: var(--font-satoshi);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1 {
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}

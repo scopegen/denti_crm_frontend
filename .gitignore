@@ -1,0 +1,14 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Secrets and local config
+.env
+.env.local
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
