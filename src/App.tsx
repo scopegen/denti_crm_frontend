@@ -4,6 +4,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { AppLayout } from './layouts/AppLayout'
 import { clinicPath } from './lib/clinic'
 import { FindClinic } from './pages/FindClinic'
+import { Landing } from './pages/Landing'
 import { ImportPatients } from './pages/app/ImportPatients'
 import { Account } from './pages/app/Account'
 import { ActivityLog } from './pages/app/ActivityLog'
@@ -11,6 +12,7 @@ import { Dues } from './pages/app/Dues'
 import { Login } from './pages/Login'
 import { ResetPassword } from './pages/ResetPassword'
 import { SharedDocument } from './pages/SharedDocument'
+import { Signup } from './pages/Signup'
 import { StyleGuide } from './pages/StyleGuide'
 import { FollowUpsSection, PatientDetail, PatientHistorySection } from './pages/app/PatientDetail'
 import { ConsultationsSection } from './pages/app/patient/ConsultationsSection'
@@ -30,7 +32,9 @@ import { Today } from './pages/app/Today'
 import { AuthProvider, useAuth } from './state/AuthContext'
 
 // Every clinic's pages sit under its name in the address, the same way for every clinic:
-//   /                        find your clinic
+//   /                        the home page: what Denti does, the plans, sign up and sign in
+//   /login                   find your clinic, then its own sign in page
+//   /signup                  a new clinic signs up: plan, details, email code
 //   /smile-dental            the clinic's sign in page (reset-password below it for a forgotten password)
 //   /smile-dental/d/<token>  a document the clinic sent a patient on WhatsApp; no sign in
 //   /smile-dental/today      Today
@@ -42,8 +46,10 @@ import { AuthProvider, useAuth } from './state/AuthContext'
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<FindClinic />} />
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<FindClinic />} />
       <Route path="/style-guide" element={<StyleGuide />} />
+      <Route path="/signup" element={<Signup />} />
 
       <Route path="/:clinic" element={<ClinicRoot />}>
         <Route index element={<Login />} />

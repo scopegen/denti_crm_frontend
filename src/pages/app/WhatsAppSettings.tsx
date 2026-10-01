@@ -41,7 +41,7 @@ function sampleValues(clinicName: string, reviewUrl: string | null): Record<stri
     date: '5 Oct 2026 at 11:30 AM',
     reason: 'Root canal sitting 2',
     doctor: 'Dr Rohan Mehta',
-    link: 'https://denti.in/smile-dental/d/Xy7Qp',
+    link: `${window.location.origin}/your-clinic/d/Xy7Qp`,
     number: 'SMILE/26-27/0001',
     amount: '₹6,500',
     valid_until: '30 Oct 2026',

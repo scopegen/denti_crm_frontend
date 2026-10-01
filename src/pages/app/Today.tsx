@@ -4,6 +4,7 @@ import { Button } from '../../components/Button'
 import { ButtonRow } from '../../components/ButtonRow'
 import { Modal } from '../../components/Modal'
 import { PatientPicker } from '../../components/PatientPicker'
+import { SetupChecklist } from '../../components/SetupChecklist'
 import { Pill } from '../../components/Pill'
 import { WhatsAppButton } from '../../components/WhatsAppButton'
 import { ApiError } from '../../lib/api'
@@ -29,7 +30,7 @@ function waitingLabel(minutes: number): string {
 }
 
 export function Today() {
-  const { clinic, clinicSlug } = useAuth()
+  const { clinic, clinicSlug, staff } = useAuth()
   const tz = clinic?.timezone
   const [data, setData] = useState<TodayData | null>(null)
   const [doctors, setDoctors] = useState<Person[]>([])
@@ -101,6 +102,9 @@ export function Today() {
       </div>
 
       {error && <p className="rounded-lg bg-crit-soft px-3.5 py-2.5 text-body text-crit">{error}</p>}
+
+      {/* A new clinic's first steps, for the owner who set it up. */}
+      {staff?.role === 'owner' && <SetupChecklist />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Section title="Arrived" count={data?.arrived.length}>

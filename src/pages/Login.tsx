@@ -45,7 +45,7 @@ export function Login() {
               We could not find a clinic at this address. Check the address your clinic gave you.
             </p>
             <ButtonRow>
-              <Link to="/">
+              <Link to="/login">
                 <Button variant="secondary">Find my clinic</Button>
               </Link>
             </ButtonRow>
