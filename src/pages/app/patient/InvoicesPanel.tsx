@@ -18,7 +18,7 @@ import { formatINR } from '../../../lib/money'
 
 const small = '!px-2.5 !py-1 text-[13px]'
 
-export function InvoicesPanel({ patientId }: { patientId: string }) {
+export function InvoicesPanel({ patientId, onChanged }: { patientId: string; onChanged?: () => void }) {
   const [data, setData] = useState<Invoices | null>(null)
   const [creating, setCreating] = useState(false)
   const [cancelling, setCancelling] = useState<Invoice | null>(null)
@@ -112,6 +112,8 @@ export function InvoicesPanel({ patientId }: { patientId: string }) {
           onDone={(updated) => {
             setData(updated)
             setCreating(false)
+            // The bill shows which charges are invoiced, and locks their prices.
+            onChanged?.()
           }}
           onClose={() => setCreating(false)}
         />
@@ -122,6 +124,7 @@ export function InvoicesPanel({ patientId }: { patientId: string }) {
           onDone={(updated) => {
             setData(updated)
             setCancelling(null)
+            onChanged?.()
           }}
           onClose={() => setCancelling(null)}
         />

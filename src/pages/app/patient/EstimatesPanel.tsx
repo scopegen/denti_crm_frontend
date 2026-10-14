@@ -18,10 +18,11 @@ import { finalPrice, type AdjustmentType, type Suggestion, type Treatment } from
 import { useAuth } from '../../../state/AuthContext'
 import { DoctorSelect, ServiceSelect, useDefaultDoctor } from './clinicalParts'
 
-// Estimates at the top of the Treatments sheet. The owner or receptionist gives one, with one
-// or more options, filled from the doctor's recommendations and planned treatments or any
-// service; prints it; and marks it accepted (its items become planned treatments at the
-// quoted prices) or declined. Doctors see the estimates and their status, never amounts.
+// Estimates, on the Bill: the owner or receptionist gives one, with one or more options,
+// filled from the doctor's recommendations and planned treatments or any service; prints or
+// sends it; and marks it accepted (its items become planned treatments at the quoted prices) or
+// declined. The Treatments sheet shows the same estimates by status only (manage off), with no
+// amounts and no actions, so doctors see what the patient was offered.
 
 const PILL: Record<EstimateStatus, 'accent' | 'success' | 'crit' | 'outline'> = {
   given: 'accent',
@@ -39,6 +40,7 @@ export function EstimatesPanel({
   treatments,
   showTeeth,
   onAccepted,
+  manage = true,
 }: {
   patientId: string
   services: Service[]
@@ -47,9 +49,11 @@ export function EstimatesPanel({
   treatments: Treatment[]
   showTeeth: boolean
   onAccepted: () => void
+  /** Giving, accepting, printing and the amounts. Off on the Treatments sheet. */
+  manage?: boolean
 }) {
   const { staff } = useAuth()
-  const isAdmin = staff?.role === 'owner' || staff?.role === 'admin'
+  const isAdmin = manage && (staff?.role === 'owner' || staff?.role === 'admin')
   const [estimates, setEstimates] = useState<Estimate[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [accepting, setAccepting] = useState<Estimate | null>(null)
@@ -119,7 +123,7 @@ export function EstimatesPanel({
       )}
 
       {estimates.length === 0 && !creating && (
-        <p className="text-[13px] text-ink-faint">No estimates yet. Give one to show the patient the cost before starting.</p>
+        <p className="text-[13px] text-ink-faint">No estimates yet. Give one to show the patient the cost before starting treatment.</p>
       )}
       {estimates.map((e) => (
         <div key={e.id} className="flex flex-col gap-2 rounded-lg border border-rule px-3.5 py-3">
@@ -140,7 +144,7 @@ export function EstimatesPanel({
                   {o.items.map((i) => (i.teeth.length ? `${i.description} (${i.teeth.join(', ')})` : i.description)).join(', ')}
                   {e.acceptedOptionId === o.id ? ' · chosen' : ''}
                 </span>
-                {o.totalPaise !== null && <span className="tabular-nums text-ink">{formatINR(o.totalPaise)}</span>}
+                {manage && o.totalPaise !== null && <span className="tabular-nums text-ink">{formatINR(o.totalPaise)}</span>}
               </div>
             ))}
           </div>

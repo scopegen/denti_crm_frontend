@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { ButtonRow } from '../components/ButtonRow'
 import { Field } from '../components/Field'
+import { LogoStacked } from '../components/Logo'
 import { api, ApiError } from '../lib/api'
 import { clinicPath } from '../lib/clinic'
 import { useAuth } from '../state/AuthContext'
@@ -45,7 +46,7 @@ export function ResetPassword() {
     <div className="flex min-h-svh items-center justify-center px-6">
       <div className="flex w-full max-w-sm flex-col gap-5 rounded-xl border border-rule bg-white p-6 shadow-sm">
         <div className="flex flex-col items-center gap-1 pb-1 text-center">
-          <span className="text-[26px] font-bold tracking-tight text-accent-deep">Denti</span>
+          <LogoStacked className="h-20" />
           {clinicName && <span className="text-body text-ink-soft">{clinicName}</span>}
           <h1 className="pt-2 text-subheading font-medium">{started ? 'Set a new password' : 'Forgot your password?'}</h1>
         </div>

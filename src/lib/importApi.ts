@@ -130,4 +130,4 @@ export const importApi = {
 /** A CSV with Denti's headings, for clinics starting a list from scratch. */
 export const TEMPLATE_CSV =
   'Patient ID,Name,Phone,Gender,Date of birth,Age,Email,City,Area,Medical conditions,Medical history,Balance owed\n' +
-  'OLD-0001,Asha Rao,9810000001,Female,12/03/1985,,asha@example.com,Noida,Sector 62,Diabetes,,1200\n'
+  'OLD-0001,Asha Rao,98XXXXXXXX,Female,12/03/1985,,asha@example.com,Noida,Sector 62,Diabetes,,1200\n'

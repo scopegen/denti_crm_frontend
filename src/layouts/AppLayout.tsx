@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { CalendarCheck, CircleUserRound, Gem, LogOut, Settings, Users, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { clinicPath } from '../lib/clinic'
+import { LogoMark } from '../components/Logo'
 import { useAuth } from '../state/AuthContext'
 import { ROLE_LABEL } from '../types/auth'
 
@@ -136,6 +137,9 @@ export function AppLayout() {
 function Brand({ clinicName, home }: { clinicName?: string; home: string }): ReactNode {
   return (
     <Link to={home} aria-label="Go to Today" className="flex items-baseline gap-2 text-white">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg bg-white p-0.5 shadow-sm">
+        <LogoMark className="h-full" />
+      </span>
       <span className="text-[20px] font-bold tracking-tight md:text-[22px]">Denti</span>
       {clinicName && <span className="hidden text-body text-white/80 sm:inline">{clinicName}</span>}
     </Link>

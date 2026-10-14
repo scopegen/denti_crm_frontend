@@ -5,6 +5,10 @@ import { AppLayout } from './layouts/AppLayout'
 import { clinicPath } from './lib/clinic'
 import { FindClinic } from './pages/FindClinic'
 import { Landing } from './pages/Landing'
+import { Contact } from './pages/legal/Contact'
+import { Privacy } from './pages/legal/Privacy'
+import { Refunds } from './pages/legal/Refunds'
+import { Terms } from './pages/legal/Terms'
 import { ImportPatients } from './pages/app/ImportPatients'
 import { Account } from './pages/app/Account'
 import { ActivityLog } from './pages/app/ActivityLog'
@@ -50,6 +54,11 @@ export default function App() {
       <Route path="/login" element={<FindClinic />} />
       <Route path="/style-guide" element={<StyleGuide />} />
       <Route path="/signup" element={<Signup />} />
+      {/* Denti's policies. "terms", "privacy" and "contact" are reserved, so no clinic can use them. */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/terms/refunds" element={<Refunds />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/contact" element={<Contact />} />
 
       <Route path="/:clinic" element={<ClinicRoot />}>
         <Route index element={<Login />} />

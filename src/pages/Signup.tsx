@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { ButtonRow } from '../components/ButtonRow'
 import { Field } from '../components/Field'
+import { LogoStacked } from '../components/Logo'
 import { PlanCards } from '../components/PlanCards'
 import { ApiError } from '../lib/api'
 import { clinicPath } from '../lib/clinic'
@@ -57,8 +58,8 @@ export function Signup() {
     <div className="min-h-svh px-4 py-10 sm:px-6">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <div className="flex flex-col items-center gap-1 text-center">
-          <Link to="/" className="text-[26px] font-bold tracking-tight text-accent-deep">
-            Denti
+          <Link to="/" aria-label="Denti home">
+            <LogoStacked className="h-20" />
           </Link>
           <h1 className="pt-1 text-heading font-medium">Set up your clinic</h1>
           <p className="text-body text-ink-soft">
@@ -251,6 +252,19 @@ function DetailsStep({
         />
         I also treat patients
       </label>
+
+      {/* New tabs, so reading them never loses what is typed here. */}
+      <p className="text-[13px] text-ink-soft">
+        By setting up your clinic, you agree to the{' '}
+        <a href="/terms" target="_blank" rel="noreferrer" className="text-accent underline">
+          Terms of Service
+        </a>{' '}
+        and the{' '}
+        <a href="/privacy" target="_blank" rel="noreferrer" className="text-accent underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
 
       {error && <p className="rounded-lg bg-crit-soft px-3.5 py-2.5 text-body text-crit">{error}</p>}
       <ButtonRow>

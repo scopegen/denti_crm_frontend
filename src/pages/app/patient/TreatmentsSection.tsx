@@ -8,15 +8,11 @@ import { WhatsAppButton } from '../../../components/WhatsAppButton'
 import { ApiError } from '../../../lib/api'
 import { parseTeeth, type RxItem } from '../../../lib/clinicalApi'
 import { formatDate, todayInZone } from '../../../lib/date'
-import { formatINR, paiseToRupeesInput, rupeesToPaise } from '../../../lib/money'
 import { settingsApi, type Service } from '../../../lib/settingsApi'
 import { todayApi, type Person } from '../../../lib/todayApi'
 import {
-  finalPrice,
   STATUS_LABEL,
   treatmentsApi,
-  type AdjustmentType,
-  type PriceInput,
   type Suggestion,
   type Treatment,
   type TreatmentStatus,
@@ -27,12 +23,12 @@ import type { PatientContext } from '../PatientDetail'
 import { Detail, DoctorSelect, PrescriptionFields, PrescriptionPanel, ServiceSelect, useDefaultDoctor } from './clinicalParts'
 import { EstimatesPanel } from './EstimatesPanel'
 
-// The Treatments sheet on a patient's page. A doctor can plan or start any of the clinic's
-// services, recommended in a consultation or not; recommendations not yet started are
-// offered at the top. Starting puts the charge on the bill. Each sitting is a visit, which
-// can carry a prescription, finish the treatment and book the next sitting. Prices,
-// discounts and cancelling a started treatment are for the owner and receptionist only;
-// doctors never see amounts.
+// The Treatments sheet on a patient's page: the clinical record, with no prices. A doctor can
+// plan or start any of the clinic's services, recommended in a consultation or not;
+// recommendations not yet started are offered at the top. Each sitting is a visit, which can
+// carry a prescription, finish the treatment and book the next sitting. Everything about money
+// (prices, increases, discounts and estimates) is on the Bill, for the owner and receptionist.
+// Cancelling a started treatment is for them too, as it takes its charge off the bill.
 
 const STATUS_PILL: Record<TreatmentStatus, 'warning' | 'outline' | 'success' | 'crit'> = {
   ongoing: 'warning',
@@ -106,6 +102,7 @@ export function TreatmentsSection() {
           treatments={treatments}
           showTeeth={showTeeth}
           onAccepted={load}
+          manage={false}
         />
       )}
 
@@ -139,7 +136,6 @@ export function TreatmentsSection() {
           services={services}
           doctors={doctors}
           showTeeth={showTeeth}
-          isAdmin={isAdmin}
           from={adding.from}
           onSaved={() => {
             setAdding(null)
@@ -176,7 +172,6 @@ function NewTreatmentForm({
   services,
   doctors,
   showTeeth,
-  isAdmin,
   from,
   onSaved,
   onCancel,
@@ -185,7 +180,6 @@ function NewTreatmentForm({
   services: Service[]
   doctors: Person[]
   showTeeth: boolean
-  isAdmin: boolean
   from?: Suggestion
   onSaved: () => void
   onCancel: () => void
@@ -194,25 +188,13 @@ function NewTreatmentForm({
   const [teeth, setTeeth] = useState(from?.teeth.join(', ') ?? '')
   const [doctorId, setDoctorId] = useDefaultDoctor(doctors)
   const [notes, setNotes] = useState('')
-  const [price, setPrice] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // The price starts as the service's listed price; the owner or receptionist can change it.
-  useEffect(() => {
-    const listed = services.find((s) => s.id === serviceId)?.listedPricePaise
-    setPrice(listed != null ? paiseToRupeesInput(listed) : '')
-  }, [serviceId, services])
 
   async function save(start: boolean) {
     const parsedTeeth = showTeeth && teeth.trim() ? parseTeeth(teeth) : []
     if (parsedTeeth === null) {
       setError('Enter teeth as two digit numbers separated by commas, such as 36, 37.')
-      return
-    }
-    const pricePaise = isAdmin ? rupeesToPaise(price) : null
-    if (isAdmin && pricePaise === null) {
-      setError('Enter the price in rupees, such as 6500.')
       return
     }
     setSaving(true)
@@ -225,7 +207,7 @@ function NewTreatmentForm({
         consultationId: from && from.service.id === serviceId ? from.consultationId : null,
         notes,
         start,
-        pricePaise,
+        pricePaise: null,
       })
       onSaved()
     } catch (err) {
@@ -246,18 +228,9 @@ function NewTreatmentForm({
         <ServiceSelect label="Treatment" services={services} value={serviceId} onChange={setServiceId} />
         {showTeeth && <Field label="Teeth" hint="Optional" value={teeth} onChange={(e) => setTeeth(e.target.value)} placeholder="36, 37" />}
       </div>
-      <div className={`grid grid-cols-1 gap-4 ${isAdmin ? 'sm:grid-cols-2' : ''}`}>
-        <DoctorSelect label="Doctor" doctors={doctors} value={doctorId} onChange={setDoctorId} />
-        {isAdmin && (
-          <Field label="Price (₹)" required inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} hint="Listed price" />
-        )}
-      </div>
+      <DoctorSelect label="Doctor" doctors={doctors} value={doctorId} onChange={setDoctorId} />
       <TextareaField label="Notes" hint="Optional" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Plan, material, shade" />
-      <p className="text-[13px] text-ink-soft">
-        {isAdmin
-          ? 'A planned treatment is not billed. Starting it puts the price on the bill.'
-          : 'Plan it for later, or start it today. Adding a visit to a planned treatment also starts it.'}
-      </p>
+      <p className="text-[13px] text-ink-soft">Plan it for later, or start it today. Adding a visit to a planned treatment also starts it.</p>
       {error && <Notice tone="crit">{error}</Notice>}
       <ButtonRow>
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
@@ -274,7 +247,7 @@ function NewTreatmentForm({
   )
 }
 
-type Mode = null | 'visit' | 'edit' | 'price' | 'handoff' | 'cancel' | 'finish' | { visit: Visit }
+type Mode = null | 'visit' | 'edit' | 'handoff' | 'cancel' | 'finish' | { visit: Visit }
 
 function TreatmentCard({
   treatment: t,
@@ -342,7 +315,6 @@ function TreatmentCard({
         <Pill variant={STATUS_PILL[t.status]}>{STATUS_LABEL[t.status]}</Pill>
       </div>
 
-      {t.money && <MoneyLine treatment={t} />}
       {t.notes && <Detail label="Notes" value={t.notes} />}
       {t.cancelReason && <Detail label="Why it was cancelled" value={t.cancelReason} />}
       {t.status === 'finished' && clinic?.plan !== 'basic' && (
@@ -393,7 +365,6 @@ function TreatmentCard({
       {mode === 'edit' && (
         <EditForm treatment={t} services={services} showTeeth={showTeeth} onSaved={done} onCancel={() => setMode(null)} />
       )}
-      {mode === 'price' && <PriceForm treatment={t} onSaved={done} onCancel={() => setMode(null)} />}
       {mode === 'handoff' && <HandoffForm treatment={t} doctors={doctors} onSaved={done} onCancel={() => setMode(null)} />}
       {mode === 'cancel' && <CancelForm treatment={t} onSaved={done} onCancel={() => setMode(null)} />}
       {mode === 'finish' && (
@@ -425,11 +396,6 @@ function TreatmentCard({
           <Button variant="ghost" className={small} onClick={() => setMode('edit')}>
             Edit
           </Button>
-          {isAdmin && (
-            <Button variant="ghost" className={small} onClick={() => setMode('price')}>
-              Price
-            </Button>
-          )}
           {t.status === 'planned' && (
             <>
               <Button variant="secondary" className={small} onClick={() => setMode('visit')}>
@@ -453,35 +419,6 @@ function TreatmentCard({
         </ButtonRow>
       )}
     </section>
-  )
-}
-
-function describeChange(type: AdjustmentType | null, value: number): string {
-  if (!type || !value) return ''
-  return type === 'percent' ? `${value / 100}%` : formatINR(value)
-}
-
-function MoneyLine({ treatment: t }: { treatment: Treatment }) {
-  const m = t.money!
-  const changes = [
-    m.adjustmentType && m.adjustmentValue ? `increase ${describeChange(m.adjustmentType, m.adjustmentValue)}` : null,
-    m.discountType && m.discountValue ? `discount ${describeChange(m.discountType, m.discountValue)}` : null,
-  ].filter(Boolean)
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper-raised px-3.5 py-2.5 text-body">
-      <span className="text-ink">
-        <span className="font-medium">{formatINR(m.finalPricePaise)}</span>
-        {changes.length > 0 && (
-          <span className="text-ink-soft">
-            {' '}
-            ({formatINR(m.pricePaise)}, {changes.join(', ')})
-          </span>
-        )}
-      </span>
-      <span className="text-[13px] text-ink-soft">
-        {t.status === 'planned' ? 'Not on the bill until it starts' : `On the bill: ${formatINR(m.billedPaise)}`}
-      </span>
-    </div>
   )
 }
 
@@ -642,133 +579,6 @@ function EditForm({
   )
 }
 
-const CHANGE_OPTIONS: { value: '' | AdjustmentType; label: string }[] = [
-  { value: '', label: 'None' },
-  { value: 'percent', label: 'Percent' },
-  { value: 'amount', label: 'Amount (₹)' },
-]
-
-function ChangeField({
-  label,
-  type,
-  value,
-  onType,
-  onValue,
-}: {
-  label: string
-  type: '' | AdjustmentType
-  value: string
-  onType: (t: '' | AdjustmentType) => void
-  onValue: (v: string) => void
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-body font-medium text-ink">{label}</span>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-        <select
-          aria-label={`${label} type`}
-          value={type}
-          onChange={(e) => onType(e.target.value as '' | AdjustmentType)}
-          className="w-full rounded-lg border border-rule bg-white px-3.5 py-2.5 text-body text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-tint"
-        >
-          {CHANGE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <input
-          aria-label={label}
-          inputMode="decimal"
-          disabled={!type}
-          value={type ? value : ''}
-          onChange={(e) => onValue(e.target.value)}
-          placeholder={type === 'percent' ? '10' : type === 'amount' ? '500' : ''}
-          className="w-full rounded-lg border border-rule bg-white px-3.5 py-2.5 text-body text-ink outline-none placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-tint disabled:bg-paper-raised"
-        />
-      </div>
-    </div>
-  )
-}
-
-/** "10" or "12.5" percent as basis points; an amount in rupees as paise. */
-function toStored(type: '' | AdjustmentType, text: string): number | null {
-  if (!type) return 0
-  if (type === 'amount') return rupeesToPaise(text)
-  if (!/^\d+(\.\d{1,2})?$/.test(text.trim())) return null
-  return Math.round(Number(text) * 100)
-}
-
-function fromStored(type: AdjustmentType | null, value: number): string {
-  if (!type || !value) return ''
-  return type === 'amount' ? paiseToRupeesInput(value) : String(value / 100)
-}
-
-function PriceForm({ treatment: t, onSaved, onCancel }: { treatment: Treatment; onSaved: (t: Treatment) => void; onCancel: () => void }) {
-  const m = t.money!
-  const [price, setPrice] = useState(paiseToRupeesInput(m.pricePaise))
-  const [adjType, setAdjType] = useState<'' | AdjustmentType>(m.adjustmentType ?? '')
-  const [adjValue, setAdjValue] = useState(fromStored(m.adjustmentType, m.adjustmentValue))
-  const [discType, setDiscType] = useState<'' | AdjustmentType>(m.discountType ?? '')
-  const [discValue, setDiscValue] = useState(fromStored(m.discountType, m.discountValue))
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const pricePaise = rupeesToPaise(price)
-  const adjustment = toStored(adjType, adjValue)
-  const discount = toStored(discType, discValue)
-  const input: PriceInput | null =
-    pricePaise !== null && adjustment !== null && discount !== null
-      ? { pricePaise, adjustmentType: adjType || null, adjustmentValue: adjustment, discountType: discType || null, discountValue: discount }
-      : null
-  const final = input ? finalPrice(input) : null
-  const started = t.status === 'ongoing' || t.status === 'finished'
-
-  async function save() {
-    if (!input) {
-      setError('Check the amounts: rupees such as 6500, and percentages such as 10.')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      onSaved(await treatmentsApi.setPrice(t.id, input))
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save the price.')
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4 rounded-lg border border-rule bg-paper p-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label="Price (₹)" required inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
-        <ChangeField label="Increase" type={adjType} value={adjValue} onType={setAdjType} onValue={setAdjValue} />
-        <ChangeField label="Discount" type={discType} value={discValue} onType={setDiscType} onValue={setDiscValue} />
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper-raised px-3.5 py-2.5 text-body">
-        <span className="text-ink-soft">
-          Final price: <span className="font-medium text-ink">{final === null ? 'Check the amounts' : formatINR(final)}</span>
-        </span>
-        {started && final !== null && final !== m.billedPaise && (
-          <span className="text-[13px] text-ink-soft">
-            The bill {final > m.billedPaise ? 'goes up' : 'comes down'} by {formatINR(Math.abs(final - m.billedPaise))}.
-          </span>
-        )}
-      </div>
-      {error && <Notice tone="crit">{error}</Notice>}
-      <ButtonRow>
-        <Button variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button onClick={save} disabled={saving || !input}>
-          {saving ? 'Saving…' : 'Save price'}
-        </Button>
-      </ButtonRow>
-    </div>
-  )
-}
-
 function HandoffForm({
   treatment: t,
   doctors,
@@ -848,9 +658,7 @@ function CancelForm({ treatment: t, onSaved, onCancel }: { treatment: Treatment;
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-crit-soft bg-crit-soft/30 p-4">
       <Field label="Why is it cancelled?" required value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} placeholder="Patient chose a crown instead" />
-      {t.status === 'ongoing' && t.money && t.money.billedPaise !== 0 && (
-        <p className="text-[13px] text-crit">Its charge of {formatINR(t.money.billedPaise)} comes off the bill.</p>
-      )}
+      {t.status === 'ongoing' && <p className="text-[13px] text-crit">Its charge comes off the patient's bill.</p>}
       {error && <Notice tone="crit">{error}</Notice>}
       <ButtonRow>
         <Button variant="ghost" onClick={onCancel} disabled={saving}>

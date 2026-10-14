@@ -6,19 +6,26 @@ import { Field, SelectField } from '../../../components/Field'
 import { Modal } from '../../../components/Modal'
 import { Pill } from '../../../components/Pill'
 import { ApiError } from '../../../lib/api'
-import { billingApi, type Bill, type BillEntry } from '../../../lib/billingApi'
+import { billingApi, type Bill, type BillEntry, type Charge } from '../../../lib/billingApi'
 import { formatDate, todayInZone } from '../../../lib/date'
 import { formatINR, rupeesToPaise } from '../../../lib/money'
+import { settingsApi, type Service } from '../../../lib/settingsApi'
+import { todayApi, type Person } from '../../../lib/todayApi'
+import { treatmentsApi, type Suggestion, type Treatment } from '../../../lib/treatmentsApi'
 import { useAuth } from '../../../state/AuthContext'
 import type { PatientContext } from '../PatientDetail'
+import { ChargePriceDialog, describeCharge } from './ChargePriceDialog'
+import { EstimatesPanel } from './EstimatesPanel'
 import { InvoicesPanel } from './InvoicesPanel'
 
-// The Bill sheet on a patient's page, for the owner and receptionist. Everything the
-// consultations and treatments put on the bill, with the running balance, and the money
-// taken. A wrong payment is reversed with a reason, never edited. Amounts are shown without
-// minus signs: payments read "Paid", discounts "Less", and the balance "due" or "credit".
+// The Bill sheet on a patient's page, for the owner and receptionist: everything about money
+// for this patient. Everything the consultations and treatments put on the bill, with the
+// running balance and the money taken; each charge's price, increase and discount (Change
+// price); invoices; and treatment estimates. A wrong payment is reversed with a reason, never
+// edited. Amounts are shown without minus signs: payments read "Paid", discounts "Less", and
+// the balance "due" or "credit".
 
-type Dialog = null | 'payment' | 'refund' | 'opening' | { reverse: BillEntry }
+type Dialog = null | 'payment' | 'refund' | 'opening' | { reverse: BillEntry } | { price: Charge }
 
 export function balanceText(paise: number): string {
   if (paise > 0) return `${formatINR(paise)} due`
@@ -78,15 +85,25 @@ export function BillSection() {
         </ButtonRow>
       </div>
 
-      <InvoicesPanel key={bill.entries.length} patientId={patient.id} />
+      <InvoicesPanel key={bill.entries.length} patientId={patient.id} onChanged={load} />
+      <BillEstimates patientId={patient.id} />
 
       {bill.entries.length === 0 ? (
         <p className="text-body text-ink-soft">Nothing on the bill yet. Consultation fees and started treatments show here.</p>
       ) : (
         <div className="flex flex-col divide-y divide-rule rounded-xl border border-rule bg-white shadow-sm">
-          {[...bill.entries].reverse().map((e) => (
-            <EntryRow key={e.id} entry={e} onReverse={() => setDialog({ reverse: e })} />
-          ))}
+          {[...bill.entries].reverse().map((e) => {
+            const charge = chargeFor(bill, e)
+            return (
+              <EntryRow
+                key={e.id}
+                entry={e}
+                charge={charge}
+                onReverse={() => setDialog({ reverse: e })}
+                onPrice={charge ? () => setDialog({ price: charge }) : undefined}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -95,10 +112,49 @@ export function BillSection() {
       )}
       {dialog === 'refund' && <RefundDialog patientId={patient.id} bill={bill} onDone={done} onClose={() => setDialog(null)} />}
       {dialog === 'opening' && <OpeningDialog patientId={patient.id} onDone={done} onClose={() => setDialog(null)} />}
-      {typeof dialog === 'object' && dialog !== null && (
+      {dialog !== null && typeof dialog === 'object' && 'reverse' in dialog && (
         <ReverseDialog entry={dialog.reverse} onDone={done} onClose={() => setDialog(null)} />
       )}
+      {dialog !== null && typeof dialog === 'object' && 'price' in dialog && (
+        <ChargePriceDialog patientId={patient.id} charge={dialog.price} onDone={done} onClose={() => setDialog(null)} />
+      )}
     </div>
+  )
+}
+
+/** The charge a consultation fee or treatment line belongs to, to change its price. */
+function chargeFor(bill: Bill, e: BillEntry): Charge | undefined {
+  if (e.kind === 'consultation_fee') return bill.charges.find((c) => c.kind === 'consultation' && c.id === e.consultationId)
+  if (e.kind === 'treatment_charge') return bill.charges.find((c) => c.kind === 'treatment' && c.id === e.treatmentId)
+  return undefined
+}
+
+/** The treatment estimates, given and managed here with the rest of the money. */
+function BillEstimates({ patientId }: { patientId: string }) {
+  const { clinic } = useAuth()
+  const [data, setData] = useState<{ treatments: Treatment[]; suggestions: Suggestion[]; services: Service[]; doctors: Person[] } | null>(null)
+
+  const load = useCallback(() => {
+    Promise.all([treatmentsApi.list(patientId), treatmentsApi.suggestions(patientId), settingsApi.services(), todayApi.doctors()])
+      .then(([treatments, suggestions, services, doctors]) => setData({ treatments, suggestions, services, doctors }))
+      .catch(() => setData(null))
+  }, [patientId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  if (!data) return null
+  return (
+    <EstimatesPanel
+      patientId={patientId}
+      services={data.services}
+      doctors={data.doctors}
+      suggestions={data.suggestions}
+      treatments={data.treatments}
+      showTeeth={clinic?.plan === 'standard' || clinic?.plan === 'pro'}
+      onAccepted={load}
+    />
   )
 }
 
@@ -116,7 +172,17 @@ function amountText(e: BillEntry): { text: string; tone: string } {
   }
 }
 
-function EntryRow({ entry: e, onReverse }: { entry: BillEntry; onReverse: () => void }) {
+function EntryRow({
+  entry: e,
+  charge,
+  onReverse,
+  onPrice,
+}: {
+  entry: BillEntry
+  charge?: Charge
+  onReverse: () => void
+  onPrice?: () => void
+}) {
   const { clinic } = useAuth()
   const amount = amountText(e)
   const meta = [formatDate(e.effectiveAt, clinic?.timezone), e.kind === 'payment' || e.kind === 'refund' ? `by ${e.createdBy.name}` : null]
@@ -133,12 +199,26 @@ function EntryRow({ entry: e, onReverse }: { entry: BillEntry; onReverse: () => 
           {meta}
           {e.note && e.kind !== 'price_change' ? ` · ${e.note}` : ''}
         </span>
+        {charge && charge.finalPaise !== e.amountPaise && (
+          <span className="text-[12px] text-ok">
+            Now {formatINR(charge.finalPaise)}
+            {describeCharge(charge) ? `: ${describeCharge(charge)}` : ''}
+          </span>
+        )}
+        {charge?.invoiceNumber && <span className="text-[12px] text-ink-faint">On invoice {charge.invoiceNumber}</span>}
       </div>
       <div className="ml-auto flex items-center gap-4">
         {e.kind === 'payment' && !e.reversed && (
           <ButtonRow>
             <Button variant="ghost" className="!px-2.5 !py-1 text-[13px]" onClick={onReverse}>
               Reverse
+            </Button>
+          </ButtonRow>
+        )}
+        {onPrice && (
+          <ButtonRow>
+            <Button variant="ghost" className="!px-2.5 !py-1 text-[13px]" onClick={onPrice}>
+              Change price
             </Button>
           </ButtonRow>
         )}

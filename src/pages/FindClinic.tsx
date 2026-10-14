@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { ButtonRow } from '../components/ButtonRow'
 import { Field } from '../components/Field'
+import { LogoStacked } from '../components/Logo'
 import { clinicPath, isValidClinicSlug } from '../lib/clinic'
 
 // Signing in, at denti.in/login. Staff type their clinic's name as it appears in the web
@@ -26,8 +27,8 @@ export function FindClinic() {
     <div className="flex min-h-svh items-center justify-center px-6">
       <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-5 rounded-xl border border-rule bg-white p-6 shadow-sm">
         <div className="flex flex-col items-center gap-1 pb-1 text-center">
-          <Link to="/" className="text-[26px] font-bold tracking-tight text-accent-deep">
-            Denti
+          <Link to="/" aria-label="Denti home">
+            <LogoStacked className="h-20" />
           </Link>
           <h1 className="pt-2 text-subheading font-medium">Find your clinic</h1>
           <p className="text-body text-ink-soft">Enter your clinic's name as it appears in your Denti web address.</p>

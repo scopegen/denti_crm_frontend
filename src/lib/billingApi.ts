@@ -1,5 +1,6 @@
 import { api, type FileDownload } from './api'
 import type { Person } from './todayApi'
+import type { AdjustmentType, PriceInput } from './treatmentsApi'
 
 // The patient's bill and the clinic's dues, for the owner and receptionist: every call, and
 // the snake_case to camelCase conversion. Amounts are whole paise; positive means owed.
@@ -25,6 +26,25 @@ export interface BillEntry {
   reversed: boolean
   createdBy: Person
   balancePaise: number
+  consultationId: string | null
+  treatmentId: string | null
+}
+
+/** A consultation fee or started treatment on the bill, and how its price is made up. */
+export interface Charge {
+  kind: 'consultation' | 'treatment'
+  id: string
+  description: string
+  on: string | null
+  pricePaise: number
+  adjustmentType: AdjustmentType | null
+  adjustmentValue: number
+  discountType: AdjustmentType | null
+  discountValue: number
+  finalPaise: number
+  billedPaise: number
+  /** The issued invoice it is on: its price is locked until that invoice is cancelled. */
+  invoiceNumber: string | null
 }
 
 export interface Bill {
@@ -33,6 +53,7 @@ export interface Bill {
   chargedPaise: number
   paidPaise: number
   entries: BillEntry[]
+  charges: Charge[]
   hasOpeningBalance: boolean
   paymentModes: string[]
 }
@@ -118,6 +139,22 @@ function toBill(raw: any): Bill {
       reversed: e.reversed,
       createdBy: e.created_by,
       balancePaise: e.balance_paise,
+      consultationId: e.consultation_id,
+      treatmentId: e.treatment_id,
+    })),
+    charges: raw.charges.map((c: any) => ({
+      kind: c.kind,
+      id: c.id,
+      description: c.description,
+      on: c.on,
+      pricePaise: c.price_paise,
+      adjustmentType: c.adjustment_type,
+      adjustmentValue: c.adjustment_value,
+      discountType: c.discount_type,
+      discountValue: c.discount_value,
+      finalPaise: c.final_paise,
+      billedPaise: c.billed_paise,
+      invoiceNumber: c.invoice_number,
     })),
     hasOpeningBalance: raw.has_opening_balance,
     paymentModes: raw.payment_modes,
@@ -128,6 +165,18 @@ function toBill(raw: any): Bill {
 export const billingApi = {
   async bill(patientId: string): Promise<Bill> {
     return toBill(await api.get(`/patients/${patientId}/bill`))
+  },
+  /** A consultation's fee, increase and discount. The bill gets only the difference. */
+  async setConsultationFee(consultationId: string, input: PriceInput): Promise<Bill> {
+    return toBill(
+      await api.put(`/consultations/${consultationId}/fee`, {
+        price_paise: input.pricePaise,
+        adjustment_type: input.adjustmentType,
+        adjustment_value: input.adjustmentValue,
+        discount_type: input.discountType,
+        discount_value: input.discountValue,
+      }),
+    )
   },
   async pay(patientId: string, input: { amountPaise: number; mode: string; paidOn: string; note: string }): Promise<Bill> {
     return toBill(
