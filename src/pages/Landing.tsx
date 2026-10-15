@@ -233,7 +233,7 @@ export function Landing() {
         <section className="mx-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-rule bg-white p-6 shadow-sm sm:mx-6">
           <div className="flex flex-col gap-1">
             <span className="text-subheading font-medium text-ink">Already using Denti?</span>
-            <span className="text-body text-ink-soft">Sign in to your clinic with its web address.</span>
+            <span className="text-body text-ink-soft">Find your clinic by its name and sign in.</span>
           </div>
           <ButtonRow>
             <Link to="/login">
